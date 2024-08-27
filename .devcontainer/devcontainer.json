@@ -1,0 +1,11 @@
+{
+    "image": "resolv-scale-discrep",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                  "ms-python.python",
+                  "ms-toolsai.jupyter"
+            ]
+        }
+        }
+}
