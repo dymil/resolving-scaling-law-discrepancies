@@ -61,7 +61,7 @@ def print_fit(key, big_font_conf_int, fit_dict, exponents_lower, exponents_upper
         key_to_print = 'D^\star'
     else:
         key_to_print = r'\rho^\star'
-    key_exponent_to_print = {'n':'$a$', 't':'$b$', 'multiplier':'$r$'}
+    key_exponent_to_print = {'n':'$a$', 'w':'$a$', 't':'$b$', 'multiplier':'$r$'}
     # Adding the fit parameters as text
     first_line = r'%s = $%.3g$ ' % (key_exponent_to_print[key], (fit_dict[key_exponent])) 
     if big_font_conf_int: # TODO: make this a parameter. having problems with formatting now

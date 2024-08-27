@@ -1,3 +1,7 @@
+'''Some functions tweaked to do depth & width (predict optimal for a given amount of compute)
+
+    Bit of a mess...'''
+
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -26,6 +30,8 @@ def fetch_flop(df, flop, loss_key='train/loss_smoothed', warmup_remove_factor=1e
                seq_len=2048, bs_key='bs', keep_bs_lr_keys=False,
                flop_per_token_key='flops_per_token', flop_tolerance=0.1):
     out = []
+    w_key = 'width'
+    d_key = 'depth'
     for _, row in df.iterrows():
         if len(row[loss_key]) == 0:
             continue
@@ -49,9 +55,11 @@ def fetch_flop(df, flop, loss_key='train/loss_smoothed', warmup_remove_factor=1e
             flop_slice = flop_vals[max(0,flop_ind-5):flop_ind+5]
             loss_slide = loss_vals.iloc[max(0,flop_ind-5):flop_ind+5]
             loss_interp = np.exp(np.interp(np.log(flop), np.log(flop_slice), np.log(loss_slide)))
-            out.append(dict(n=row[n_key], t=flop / row[flop_per_token_key], loss=loss_interp))
+            # out.append(dict(n=row[n_key], t=flop / row[flop_per_token_key], loss=loss_interp))
+            out.append(dict(n=row[n_key], w=row[w_key], d=row[d_key], t=flop / row[flop_per_token_key], loss=loss_interp))
         else:
-            out.append(dict(n=row[n_key], t=loss_vals.index[flop_ind] / row[flop_per_token_key], loss=loss_vals.iloc[flop_ind]))
+            # out.append(dict(n=row[n_key], t=loss_vals.index[flop_ind] / row[flop_per_token_key], loss=loss_vals.iloc[flop_ind]))
+            out.append(dict(n=row[n_key], w=row[w_key], d=row[d_key], t=loss_vals.index[flop_ind] / row[flop_per_token_key], loss=loss_vals.iloc[flop_ind]))
         if keep_bs_lr_keys:
             out[-1].update({k: row[k] for k in [bs_key, 'lr']})
 
@@ -85,16 +93,16 @@ def power_law_fit(df, x, y, weighted=False):
 
 
 def fit_compute_optimal_power_laws(optimal_pairs, bootstrap_data, bootstrap_num=None, bootstrap_num_loss=200, fit_loss=True):
-    keys_to_fit = ['n', 't', 'multiplier']
+    keys_to_fit = ['d', 'w', 't', 'multiplier']
     if fit_loss:
         keys_to_fit.append('loss')
     out = {'basic': power_law_fit(optimal_pairs.reset_index(), 'flops', keys_to_fit),
            'weighted': power_law_fit(optimal_pairs.reset_index(), 'flops', keys_to_fit, weighted=True)}
     bootstrap_samples = bootstrap_data.dropna().set_index('flops')[
-        ['n_stars', 't_stars', 'multiplier_stars', 'loss_stars', 'n_star_std', 't_star_std', 'loss_star_std']].rename(
+        ['w_stars', 'd_stars', 'n_stars', 't_stars', 'multiplier_stars', 'loss_stars', 'n_star_std', 't_star_std', 'loss_star_std']].rename(
         columns=lambda x: x.replace('_stars', ''))
     if bootstrap_num is None:
-        bootstrap_num = bootstrap_samples[['n', 't', 'multiplier']].applymap(len).min().min()
+        bootstrap_num = bootstrap_samples[['w', 'd', 't', 'multiplier']].applymap(len).min().min()
 
     for name, is_weighted in dict(bootstrap=False, bootstrap_weighted=True).items():
         bs_smaples_arr = [
@@ -104,7 +112,7 @@ def fit_compute_optimal_power_laws(optimal_pairs, bootstrap_data, bootstrap_num=
             ] if fit_loss else []
         bs_smaples_arr.extend([power_law_fit(
             bootstrap_samples.applymap(lambda x: maybe_get_item(x, i)).reset_index(),
-            'flops', ['n', 't', 'multiplier'], weighted=is_weighted)
+            'flops', ['w', 'd', 't', 'multiplier'], weighted=is_weighted)
             for i in range(bootstrap_num)])
         out[name] = bs_smaples_arr
     bootstrap_medians = bootstrap_samples.applymap(np.median)
@@ -216,9 +224,14 @@ def interp_flop(big_df, loss_key, flop_vals=[8e16, 3e17, 6e17, 3e18, 6e18, 1e19]
             df_['t'] 
             print(df_.iloc[0].loss)
         elif groupby_action == 'min':
-            df_ = df_.loc[df_.groupby(['n']).loss.idxmin()]
+            # need strictly increasing values for interpolation, so can't have duplicates, so we do groupby twice rather than d,w together
+            df_ = df_.loc[df_.groupby(['d', 'w']).loss.idxmin()]
+            df_ = df_.loc[df_.groupby(['d']).loss.idxmin()] # luckily only 'd' has duplicates, so no awful triangle situation is possible
+            # print(df_)
+            # df_ = df_.loc[df_.groupby(['n']).loss.idxmin()]
         elif groupby_action == 'mean':
-            df_ = df_.groupby('n').mean()
+            df_ = df_.groupby('d', 'w').mean()
+            # df_ = df_.groupby('n').mean()
         else:
             raise ValueError(f'Unknown groupby_action {groupby_action}')
         df_ = df_.reset_index()
@@ -227,15 +240,21 @@ def interp_flop(big_df, loss_key, flop_vals=[8e16, 3e17, 6e17, 3e18, 6e18, 1e19]
 
         max_loss, min_loss = max(max_loss, df_.loss.max()), min(min_loss, df_.loss.min())
         
+        w_star_ind_, w_star_std_, noised_w_stars_, w_interp_, loss_interp_, noised_loss, loss_star_std = interpolation(
+                    df_, interp_num, bootstrap_iters, seed_noise, min_std_factor, interp_num_multiplier, n_star_std_method, 'w')
+        d_star_ind_, d_star_std_, noised_d_stars_, d_interp_, loss_interp_, noised_loss, loss_star_std = interpolation(
+                    df_, interp_num, bootstrap_iters, seed_noise, min_std_factor, interp_num_multiplier, n_star_std_method, 'd')
+        # keep n for multiplier... is that token multiplier? Why is n squared?
         n_star_ind_, n_star_std_, noised_n_stars_, n_interp_, loss_interp_, noised_loss, loss_star_std = interpolation(
             df_, interp_num, bootstrap_iters, seed_noise, min_std_factor, interp_num_multiplier, n_star_std_method, 'n')
 
         t_star_ind_, t_star_std_, noised_t_stars_, t_interp_, loss_interp_tok_, noised_loss, _ = interpolation(
             df_, interp_num, bootstrap_iters, seed_noise, min_std_factor, interp_num_multiplier, t_star_std_method, 't')
         
-        if n_star_ind_ != 0 and n_star_ind_ != interp_num -1 and noised_n_stars_ is not None:
+        # think this is just checking if interpolation succeeded?? What does multiplier do?
+        if t_star_ind_ != 0 and t_star_ind_ != interp_num -1 and noised_t_stars_ is not None:
             optimal_pairs.append(
-                dict(flops=c, n=n_interp_[n_star_ind_], t=t_interp_[t_star_ind_], multiplier=c / 6 / (n_interp_[n_star_ind_]**2),
+                dict(flops=c, w=w_interp_[w_star_ind_], d=d_interp_[d_star_ind_], n=n_interp_[n_star_ind_], t=t_interp_[t_star_ind_], multiplier=c / 6 / (n_interp_[n_star_ind_]**2),
                      loss=loss_interp_.min(), loss_t=loss_interp_tok_.min(),
                      n_vals=df_.n.values, t_vals=df_.t.values, loss_vals=df_.loss
                     )
@@ -250,9 +269,15 @@ def interp_flop(big_df, loss_key, flop_vals=[8e16, 3e17, 6e17, 3e18, 6e18, 1e19]
             dict(n_interp=n_interp_, loss_interp=loss_interp_, 
                  t_interp=t_interp_, loss_interp_tok=loss_interp_tok_, 
                  opt_ind=n_star_ind_, opt_tok_ind=t_star_ind_, flops=c, 
+                 orig_d=df_.d, orig_w=df_.w,
                  orig_n=df_.n, orig_t=df_.t, orig_loss=df_.loss)
             )
         if n_star_std_method == 'add_seed_noise':
+            out[-1]['w_star_std'] = w_star_std_
+            out[-1]['w_stars'] = noised_w_stars_
+            out[-1]['d_star_std'] = d_star_std_
+            out[-1]['d_stars'] = noised_d_stars_
+
             out[-1]['n_star_std'] = n_star_std_
             out[-1]['n_stars'] = noised_n_stars_
             out[-1]['multiplier_stars'] = (c / (6 * np.array(noised_n_stars_)**2)) if noised_n_stars_ is not None else None
@@ -266,7 +291,7 @@ def interp_flop(big_df, loss_key, flop_vals=[8e16, 3e17, 6e17, 3e18, 6e18, 1e19]
             optimal_pairs[-1]['t_star_std'] = t_star_std_
 
             out[-1]['loss_stars'] = noised_loss
-            out[-1]['loss_star_std'] = loss_star_std 
+            out[-1]['loss_star_std'] = loss_star_std
             optimal_pairs[-1]['loss_star_std'] = loss_star_std
 
     out_df = pd.DataFrame(out)
@@ -278,7 +303,7 @@ def interp_flop(big_df, loss_key, flop_vals=[8e16, 3e17, 6e17, 3e18, 6e18, 1e19]
                 continue
             flop = row['flops']
             data_row = out_df.set_index('flops').loc[flop]
-            for key in ['n', 't', 'multiplier', 'loss']:
+            for key in ['w', 'd', 'n', 't', 'multiplier', 'loss']:
                 optimal_pairs_df.at[ind, key] = np.median(data_row[key + '_stars']) if data_row[key + '_stars'] is not None else row[key]
 
     return out_df, optimal_pairs_df, max_loss, min_loss
@@ -540,7 +565,7 @@ def fit_l_star_vs_N_for_M(df, smoothed=False):
     return fits
 
 
-def preform_analysis_with_sweep_data(summary_df, sweep_fit, omit_first=False):
+def perform_analysis_with_sweep_data(summary_df, sweep_fit, omit_first=False):
     df = summary_df.copy()
     data = df['data']
     data_sweep = data[['flops']].copy()
