@@ -6,7 +6,7 @@ import pandas as pd
 from matplotlib.ticker import FixedLocator, FixedFormatter
 import matplotlib
 
-def figure1(summary_df: pd.DataFrame, configs_to_show=None, save=False, ylim=None, arrows=True, save_path='../paper/figures/figure1.pdf'):
+def figure1(summary_df: pd.DataFrame, configs_to_show=None, save=False, ylim=None, arrows=True, save_path='figures/figure1.pdf'):
     # Figure 1
     if configs_to_show is None:
         configs_to_show = FIGURE1_CONFIGS
@@ -71,7 +71,7 @@ def figure1(summary_df: pd.DataFrame, configs_to_show=None, save=False, ylim=Non
             plt.savefig(save_path, bbox_inches='tight')
 
 
-def warm_evidence_figure(summary_df: pd.DataFrame, configs_to_show=None, save=False, save_path='../paper/figures/warmup_evidence.pdf'):
+def warm_evidence_figure(summary_df: pd.DataFrame, configs_to_show=None, save=False, save_path='figures/warmup_evidence.pdf'):
     if configs_to_show is None:
         configs_to_show = WARMUP_EVIDENCE_CONFIGS
 
@@ -130,7 +130,7 @@ def warm_evidence_figure(summary_df: pd.DataFrame, configs_to_show=None, save=Fa
         plt.savefig(save_path, bbox_inches='tight')
 
 
-def isoflop_loss_figure(summary_df, save=False, configs_to_show=None, save_path='../paper/figures/IsoFLOP-curves.pdf', ylim=[2.8, 7], min_multiplier=0.5):
+def isoflop_loss_figure(summary_df, save=False, configs_to_show=None, save_path='figures/IsoFLOP-curves.pdf', ylim=[2.8, 7], min_multiplier=0.5):
     if configs_to_show is None:
         configs_to_show = FIGURE1_CONFIGS
     fig, axes = plt.subplots(2, 3, figsize=[16, 10], facecolor='w')
@@ -199,7 +199,7 @@ def full_results_figure(summary_df,
                           configs_to_show=None,
                           save=None,
                           kaplan_adjusted=False,
-                          save_path=f'../paper/figures/rw-results-fig.pdf'):
+                          save_path=f'figures/rw-results-fig.pdf'):
     summary_df = summary_df.copy()
     if configs_to_show is None:
         configs_to_show = FIGURE1_CONFIGS
@@ -332,10 +332,10 @@ def full_results_figure(summary_df,
             if not kaplan_adjusted:
                 plt.savefig(save_path.replace('rw', cfg[0]), bbox_inches='tight')
             else:
-                plt.savefig(f'../paper/figures/kaplan-adjusted.pdf', bbox_inches='tight')
+                plt.savefig(f'figures/kaplan-adjusted.pdf', bbox_inches='tight')
 
 
-def opt_N_with_attention_figure(summary_df, configs_to_show=None, ylim=None, save=False, save_path='../paper/figures/accounting-att.pdf'):
+def opt_N_with_attention_figure(summary_df, configs_to_show=None, ylim=None, save=False, save_path='figures/accounting-att.pdf'):
     summary_df = summary_df.copy()
     if configs_to_show is None:
         configs_to_show = ATTENTION_ACCOUNTING_CONFIGS
@@ -379,7 +379,7 @@ def opt_N_with_attention_figure(summary_df, configs_to_show=None, ylim=None, sav
 
 
 def accuracy_vs_compute_figure(summary_df, plot_config=None, sweep_costs=None, xmax=4e20,
-                               save=False, save_path='../paper/figures/accuracy_vs_compute.pdf'):
+                               save=False, save_path='figures/accuracy_vs_compute.pdf'):
     if sweep_costs is None:
         sweep_costs = {'reduced sweep': 2.88e19, 'full sweep': 2.04e20}
     if plot_config is None:
@@ -438,7 +438,7 @@ def accuracy_vs_compute_figure(summary_df, plot_config=None, sweep_costs=None, x
 
 
 def opt_loss_figure(summary_df, bootstrap_num=50,
-                    save=False, save_path='../paper/figures/opt_loss.pdf'):
+                    save=False, save_path='figures/opt_loss.pdf'):
     with plt.rc_context({'font.size': 16,  # For the text
                          'axes.titlesize': 18,  # For the subplot titles
                          'axes.labelsize': 16,  # For the x and y labels
@@ -466,7 +466,7 @@ def opt_loss_figure(summary_df, bootstrap_num=50,
 
 
 def opt_loss_extended_figure(summary_df, bootstrap_num=50, 
-                    save=False, save_path='../paper/figures/opt_loss_extended.pdf'):
+                    save=False, save_path='figures/opt_loss_extended.pdf'):
     with plt.rc_context({'font.size': 16,  # For the text
                          'axes.titlesize': 18,  # For the subplot titles
                          'axes.labelsize': 16,  # For the x and y labels
@@ -526,7 +526,7 @@ def opt_loss_extended_figure(summary_df, bootstrap_num=50,
 
 def hparams_fit_figure(reduced_df, reduced_df_opt_eta_and_bs, fit_dict,
                        min_params_for_fit=2.5e7, max_params_for_fit=1.1e8, excess_loss_thresh=0.03,
-                       save=False, save_path='../paper/figures/hparams_fit.pdf'):
+                       save=False, save_path='figures/hparams_fit.pdf'):
     show_keys = ['bs', 'lr']
 
     with plt.rc_context({'font.size': 16,  # For the text
@@ -651,7 +651,7 @@ def full_sweep_figure(df, save=False):
 
         plt.tight_layout()
         if save:
-            plt.savefig('../paper/figures/hparams-sweep.pdf')
+            plt.savefig('figures/hparams-sweep.pdf')
 
 
 
@@ -735,7 +735,7 @@ def seed_noise_figure(agg_df, save=False, save_path=None, xlim=(2.7, 7.5), ylim=
             plt.savefig(save_path, bbox_inches='tight')
 
 
-def loss_curves_figure(df, save=False, configs_to_show=None, save_path='../paper/figures/loss-curves.pdf',remove_warmup=0, xlim=[1e15,2.7e19], ylim=[2.9, 6]):
+def loss_curves_figure(df, save=False, configs_to_show=None, save_path='figures/loss-curves.pdf',remove_warmup=0, xlim=[1e15,2.7e19], ylim=[2.9, 6]):
     if configs_to_show is None:
         configs_to_show = FIGURE1_CONFIGS
     df = df.copy()
