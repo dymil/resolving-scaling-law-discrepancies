@@ -4,7 +4,7 @@ from configs import *
 from utils import *
 
 
-def draw_obsvervations(optimal_pairs, key='n', plot_error_bars=False, obs_color='r'):
+def draw_observations(optimal_pairs, key='n', plot_error_bars=False, obs_color='r'):
     key_std = f'{key}_star_std'
     if f'{key}_star_std' in optimal_pairs.columns and plot_error_bars:
         lower_bounds = optimal_pairs[key] - optimal_pairs[key] * np.exp(-optimal_pairs[key_std])
@@ -133,7 +133,7 @@ def opt_param_vs_compute_plot(data, optimal_pairs, fit_dict, key='n', fit_dict_w
     if flop_grid_endpoints is None:
         flop_grid_endpoints = (np.min(flop_vals), np.max(flop_vals))
     flops_grid = np.geomspace(*flop_grid_endpoints, 20)
-    draw_obsvervations(optimal_pairs, key=key, plot_error_bars=plot_error_bars, obs_color=obs_color)
+    draw_observations(optimal_pairs, key=key, plot_error_bars=plot_error_bars, obs_color=obs_color)
 
     if enough_for_fit:
         exponents_lower, exponents_upper, coefs_lower, coefs_upper = draw_fit(data, flops_grid, fit_dict, fit_dict_weighted, fit_dicts_bootstrap=fit_dicts_bootstrap, key=key, conf_level=conf_level, plot_bootstrap_obvs=plot_bootstrap_obvs,
